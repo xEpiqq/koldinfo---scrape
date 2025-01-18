@@ -1,0 +1,1117 @@
+
+
+// src/App.css
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+
+
+// src/App.jsx
+import React from 'react';
+import Popup from './Popup';
+
+export default function App() {
+  return <Popup />;
+}
+
+
+
+// src/contentScript.jsx
+import React, { useState } from "react"
+import { createRoot } from "react-dom/client"
+import tailwindStyles from "./index.css?inline"
+import ExportUI from "./ExportUI"
+import ParentExportFlow from "./ParentExportFlow"
+
+function getCookieValue(name) {
+  const match = document.cookie.match(new RegExp(`(^|;\\s*)${name}=([^;]+)`))
+  return match ? match[2] : ""
+}
+
+const jsessionId = getCookieValue("JSESSIONID").replace(/^"|"$/g, "")
+const ajaxMatch = jsessionId.match(/ajax:(\d+)/)
+const ajaxNumber = ajaxMatch?.[1] || ""
+
+function FloatingUI() {
+  const [showFlow, setShowFlow] = useState(false)
+
+  return (
+    <div className="flex items-center justify-center text-white font-bold">
+      {/* Normal Export Button */}
+      <ExportUI onExportClick={() => setShowFlow(true)} />
+
+      {/* Export Flow */}
+      <ParentExportFlow open={showFlow} onClose={() => setShowFlow(false)} ajaxNumber={ajaxNumber} />
+    </div>
+  )
+}
+
+const searchMarvelSrp = document.querySelector(".search-marvel-srp")
+const resultsContainer = document.querySelector(".search-results-container")
+
+if (searchMarvelSrp && resultsContainer) {
+  const container = document.createElement("div")
+  const shadowRoot = container.attachShadow({ mode: "open" })
+
+  const styleSheet = new CSSStyleSheet()
+  styleSheet.replaceSync(tailwindStyles)
+  shadowRoot.adoptedStyleSheets = [styleSheet]
+
+  container.style.cssText = `
+    display: flex;
+    justify-content: flex-end;
+    margin: 1rem;
+    align-items: center;
+  `
+  searchMarvelSrp.insertBefore(container, resultsContainer)
+  createRoot(shadowRoot).render(<FloatingUI />)
+}
+
+
+
+// src/ExportDoneModal.jsx
+import React from "react"
+
+export default function ExportDoneModal({
+  fetchedCount,
+  totalWanted,
+  onClose,
+  onSave,
+}) {
+  // Overlay style must remain the same
+  const overlayStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  }
+
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-[400px] min-h-[300px] rounded-xl px-8 py-12 text-center shadow-lg"
+      >
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+          <svg
+            viewBox="0 0 24 24"
+            className="h-7 w-7 text-green-600"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="mt-6 text-3xl font-semibold text-gray-900">
+          Export Successful
+        </h2>
+        <p className="mt-3 text-xl text-gray-600">
+          {fetchedCount} out of {totalWanted} people saved
+        </p>
+        <button
+          onClick={onSave}
+          className="mt-8 w-full rounded-md bg-sky-400 py-3 text-xl font-bold text-white hover:bg-sky-700"
+        >
+          Save CSV
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
+
+// src/ExportProgressModal.jsx
+import React from "react"
+
+export default function ExportProgressModal({
+  fetchedCount,
+  totalWanted,
+  statusMsg,
+  onClose,
+  onStopAndSave,
+}) {
+  // Keep overlay style unchanged
+  const overlayStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  }
+
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-[400px] min-h-[300px] rounded-xl px-8 py-12 text-center shadow-lg"
+      >
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-sky-100">
+          <img
+            src="https://i.ibb.co/vYGgN3t/koldinfologo.png"
+            alt="Scraping"
+            className="h-8"
+          />
+        </div>
+        <h2 className="mt-2 text-2xl font-semibold text-gray-900">
+          {fetchedCount} of {totalWanted} people scraped
+        </h2>
+        <p className="mt-3 text-xl text-gray-600">{statusMsg}</p>
+        <div className="mt-8 flex justify-center space-x-3">
+          <button
+            onClick={onClose}
+            className="w-full rounded-md bg-sky-50 py-3 text-xl font-bold text-sky-400 hover:bg-sky-100"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onStopAndSave}
+            className="w-full rounded-md bg-sky-400 py-3 text-xl font-bold text-white hover:bg-sky-700"
+          >
+            Stop &amp; Save
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+
+// src/ExportSetupModal.jsx
+import React from "react"
+
+export default function ExportSetupModal({
+  totalWanted,
+  setTotalWanted,
+  startPage,
+  setStartPage,
+  onClose,
+  onExport,
+}) {
+  // Keep overlay style unchanged
+  const overlayStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  }
+
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-[400px] min-h-[300px] rounded-xl px-8 py-12 text-center shadow-lg"
+      >
+        <h2 className="text-3xl font-semibold text-gray-900">
+          How many profiles do you wanna scrape?
+        </h2>
+
+        {/* Inputs stacked vertically, using the borderless style */}
+        <div className="mt-12 space-y-6 text-left">
+          {/* Number to Scrape */}
+          <div>
+            <label
+              htmlFor="totalWanted"
+              className="block text-xl font-medium text-gray-900"
+            >
+              Number to Scrape (Max 1000)
+            </label>
+            <div className="relative mt-2">
+              <input
+                id="totalWanted"
+                type="number"
+                placeholder="100"
+                className="peer block w-full bg-gray-100 px-3 py-1.5 text-xl text-gray-700 placeholder:text-gray-500 focus:outline focus:outline-0"
+                value={totalWanted}
+                onChange={(e) => setTotalWanted(e.target.value)}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 bottom-0 border-gray-300 peer-focus:border-t-2 peer-focus:border-indigo-400"
+              />
+            </div>
+          </div>
+
+          {/* Start Page */}
+          <div>
+            <label
+              htmlFor="startPage"
+              className="block text-xl font-medium text-gray-900"
+            >
+              Start Page
+            </label>
+            <div className="relative mt-2">
+              <input
+                id="startPage"
+                type="number"
+                placeholder="1"
+                className="peer block w-full bg-gray-100 px-3 py-1.5 text-xl text-gray-700 placeholder:text-gray-500 focus:outline focus:outline-0"
+                value={startPage}
+                onChange={(e) => setStartPage(e.target.value)}
+              />
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 bottom-0 border-gray-300 peer-focus:border-t-2 peer-focus:border-indigo-400"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Single big button at the bottom */}
+        <div className="mt-10">
+          <button
+            className="w-full rounded-md bg-sky-400 px-4 py-3 text-xl font-bold text-white hover:bg-sky-700"
+            onClick={onExport}
+          >
+            Export CSV
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+
+// src/ExportUI.jsx
+import React from "react"
+import { CheckCircleIcon } from "@heroicons/react/20/solid"
+
+export default function ExportUI({ onExportClick }) {
+  return (
+    <div className="flex items-center justify-between p-6">
+      {/* Brand Logo + Title */}
+      <div className="flex items-center gap-2">
+        <img
+          src="https://i.ibb.co/vYGgN3t/koldinfologo.png"
+          alt="Koldinfo"
+          className="h-10 w-10"
+        />
+        <span className="text-2xl font-bold text-sky-700 mr-6">Koldinfo</span>
+      </div>
+
+      {/* Export Button */}
+      <button
+        type="button"
+        onClick={onExportClick}
+        className="inline-flex items-center gap-x-2 rounded-md bg-sky-400 px-3.5 py-2.5 text-2xl font-semibold text-white shadow-sm hover:bg-sky-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 active:scale-95"
+      >
+        Export
+        <CheckCircleIcon aria-hidden="true" className="h-7 w-7" />
+      </button>
+    </div>
+  )
+}
+
+
+
+// src/index.css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+
+
+// src/main.jsx
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+
+
+// src/ModalManager.jsx
+import React, { useState, useRef } from "react"
+
+// Helper for small delays
+function sleep(ms) {
+  return new Promise((res) => setTimeout(res, ms))
+}
+
+export default function ModalManager({ ajaxNumber, onClose }) {
+  const [showConfig, setShowConfig] = useState(true)
+  const [showProgress, setShowProgress] = useState(false)
+  const [totalWanted, setTotalWanted] = useState("100")
+  const [startPage, setStartPage] = useState("1")
+  const [fetchedCount, setFetchedCount] = useState(0)
+  const [statusMsg, setStatusMsg] = useState("")
+  const [scrapedData, setScrapedData] = useState([]) // holds partial or full results
+
+  const stopRef = useRef(false)
+
+  // Close everything
+  function closeAll() {
+    onClose()
+    setShowConfig(false)
+    setShowProgress(false)
+  }
+
+  // Download data as CSV
+  function downloadCSV(data) {
+    const columns = [
+      "name",
+      "url",
+      "jobTitle",
+      "location",
+      "connectionDegree",
+      "badgeIcon",
+      "totalFollowers",
+      "extraLinks",
+    ]
+    const header = columns.map((c) => `"${c}"`).join(",")
+    const rows = data.map((item) =>
+      columns
+        .map((col) => {
+          const val = item[col]
+          if (Array.isArray(val)) {
+            return `"${JSON.stringify(val).replace(/"/g, '""')}"` 
+          }
+          const strVal = val ? String(val) : ""
+          return `"${strVal.replace(/"/g, '""')}"` 
+        })
+        .join(",")
+    )
+    const csvString = [header, ...rows].join("\n")
+    const blob = new Blob([csvString], { type: "text/csv" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = "linkedin_export.csv"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  // Actual fetching
+  async function fetchLinkedInData(offset) {
+    const url = `https://www.linkedin.com/voyager/api/graphql?variables=(start:${offset},origin:OTHER,query:(flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.cd5ee9d14d375bf9ca0596cfe0cbb926`
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          accept: "application/vnd.linkedin.normalized+json+2.1",
+          "csrf-token": `ajax:${ajaxNumber}`,
+        },
+      })
+      if (!resp.ok) throw new Error(`Request failed with ${resp.status}`)
+      const json = await resp.json()
+      const included = json.included || []
+
+      return included
+        .filter((x) => x.$type === "com.linkedin.voyager.dash.search.EntityResultViewModel")
+        .map((entity) => {
+          const name = entity?.title?.text || "N/A"
+          const rawUrl = entity?.navigationUrl || ""
+          const profileUrl = rawUrl.split("?")[0].replace(/\/$/, "")
+          const jobTitle = entity?.primarySubtitle?.text || ""
+          const location = entity?.secondarySubtitle?.text || ""
+          const connectionDegree = entity?.badgeText?.text?.replace("• ", "") || ""
+
+          let badgeIcon = null
+          const iconDetail = entity?.badgeIcon?.attributes?.[0]?.detailData || {}
+          if (iconDetail.icon === "IC_LINKEDIN_INFLUENCER_COLOR_ICON_16DP") {
+            badgeIcon = "Influencer"
+          } else if (iconDetail.systemImage === "SYS_ICN_VERIFIED_SMALL") {
+            badgeIcon = "Verified"
+          } else if (iconDetail.icon === "IC_LINKEDIN_PREMIUM_GOLD_ICON_16DP") {
+            badgeIcon = "Premium"
+          }
+
+          let totalFollowers = null
+          const extraLinks = []
+          if (Array.isArray(entity?.insightsResolutionResults)) {
+            entity.insightsResolutionResults.forEach((insight) => {
+              const text = insight?.simpleInsight?.title?.text || ""
+              const matchFollowers = text.match(/(\d+(\.\d+)?[KMB]?)(?=\s+followers)/i)
+              if (matchFollowers && !totalFollowers) totalFollowers = matchFollowers[1]
+              const ctaUrl = insight?.premiumCustomCtaInsight?.navigationContext?.url
+              if (ctaUrl) extraLinks.push(ctaUrl)
+            })
+          }
+
+          return {
+            name,
+            url: profileUrl,
+            jobTitle,
+            location,
+            connectionDegree,
+            badgeIcon,
+            totalFollowers,
+            extraLinks,
+          }
+        })
+    } catch (err) {
+      console.error(err)
+      return []
+    }
+  }
+
+  // Start the scraping
+  async function startScraping() {
+    setShowConfig(false)
+    setShowProgress(true)
+    setScrapedData([])
+    setFetchedCount(0)
+    setStatusMsg("")
+    stopRef.current = false
+
+    const wanted = parseInt(totalWanted, 10)
+    const start = parseInt(startPage, 10)
+    if (isNaN(wanted) || wanted < 1 || wanted > 1000) {
+      alert("Please enter a valid total (1–1000).")
+      closeAll()
+      return
+    }
+    if (isNaN(start) || start < 1) {
+      alert("Please enter a valid start page (≥1).")
+      closeAll()
+      return
+    }
+
+    let i = 0
+    let allResults = []
+
+    try {
+      while (i < wanted) {
+        if (stopRef.current) break
+        const offset = (start - 1) * 10 + i
+        const pageData = await fetchLinkedInData(offset)
+        if (!pageData.length) break
+
+        allResults = allResults.concat(pageData)
+        setScrapedData(allResults) // update state so we have partial results
+        i += pageData.length
+        setFetchedCount(i)
+        setStatusMsg("Please don't leave this page.")
+        await sleep(1000)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+
+    if (allResults.length) {
+      setFetchedCount(i)
+      setStatusMsg("All done! Export now or cancel.")
+    } else {
+      alert("No data found or canceled early.")
+      closeAll()
+    }
+  }
+
+  // -- CONFIG MODAL --
+  const configModal = (
+    <div
+      className="m-4 w-full max-w-md rounded bg-white p-6 text-center shadow-lg"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h2 className="mb-4 text-lg font-bold">How many people to export?</h2>
+      <div className="mb-2 flex items-center justify-center gap-2">
+        <input
+          className="w-20 rounded border border-gray-300 p-1 text-sm"
+          type="number"
+          value={totalWanted}
+          onChange={(e) => setTotalWanted(e.target.value)}
+          placeholder="Max 1000"
+        />
+        <input
+          className="w-20 rounded border border-gray-300 p-1 text-sm"
+          type="number"
+          value={startPage}
+          onChange={(e) => setStartPage(e.target.value)}
+          placeholder="Start page"
+        />
+      </div>
+      <div className="mb-4 text-xs text-gray-500">Max 1000, page starts at 1</div>
+      <div className="flex justify-center gap-4">
+        <button
+          onClick={closeAll}
+          className="rounded bg-blue-50 px-4 py-2 text-sm text-blue-600"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={startScraping}
+          className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Export CSV
+        </button>
+      </div>
+    </div>
+  )
+
+  // -- PROGRESS MODAL --
+  const progressModal = (
+    <div
+      className="m-4 w-full max-w-md rounded bg-white p-6 text-center shadow-lg"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <img
+        src="https://i.ibb.co/vYGgN3t/koldinfologo.png"
+        alt="Scraping"
+        className="mx-auto mb-4 h-8"
+      />
+      <h2 className="mb-2 text-lg font-bold">
+        {fetchedCount} of {totalWanted} people exported
+      </h2>
+      <p className="mb-4 text-sm">{statusMsg}</p>
+      <div className="flex justify-center gap-4">
+        <button
+          onClick={() => {
+            stopRef.current = true
+            closeAll()
+          }}
+          className="rounded bg-blue-50 px-4 py-2 text-sm text-blue-600"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            // STOP and SAVE what's currently in scrapedData
+            stopRef.current = true
+            if (scrapedData.length) downloadCSV(scrapedData)
+            closeAll()
+          }}
+          className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Stop &amp; Save
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={closeAll}
+    >
+      {showConfig && configModal}
+      {showProgress && progressModal}
+    </div>
+  )
+}
+
+
+
+// src/ParentExportFlow.jsx
+import React, { useState, useEffect, useRef } from "react"
+import ExportSetupModal from "./ExportSetupModal"
+import ExportProgressModal from "./ExportProgressModal"
+import ExportDoneModal from "./ExportDoneModal"
+
+export default function ParentExportFlow({ open, onClose, ajaxNumber = "" }) {
+  const [modalStep, setModalStep] = useState(0)
+  const [totalWanted, setTotalWanted] = useState("100")
+  const [startPage, setStartPage] = useState("1")
+  const [fetchedCount, setFetchedCount] = useState(0)
+  const [statusMsg, setStatusMsg] = useState("")
+  const [scrapedData, setScrapedData] = useState([])
+
+  const stopRef = useRef(false)
+
+  // Reset the flow each time "open" changes
+  useEffect(() => {
+    if (open) setModalStep(1)
+    else setModalStep(0)
+  }, [open])
+
+  // Simple helper to pause between requests
+  function sleep(ms) {
+    return new Promise((res) => setTimeout(res, ms))
+  }
+
+  // Download data as CSV
+  function downloadCSV(data) {
+    const cols = [
+      "name",
+      "url",
+      "jobTitle",
+      "location",
+      "connectionDegree",
+      "badgeIcon",
+      "totalFollowers",
+      "extraLinks",
+    ]
+    const header = cols.map((c) => `"${c}"`).join(",")
+    const rows = data.map((item) =>
+      cols
+        .map((col) => {
+          const val = item[col]
+          if (Array.isArray(val)) {
+            return `"${JSON.stringify(val).replace(/"/g, '""')}"` 
+          }
+          return `"${String(val || "").replace(/"/g, '""')}"` 
+        })
+        .join(",")
+    )
+    const csvData = [header, ...rows].join("\n")
+    const blob = new Blob([csvData], { type: "text/csv" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = "linkedin_export.csv"
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  // Fetch data from LinkedIn
+  async function fetchLinkedInData(offset) {
+    const url = `https://www.linkedin.com/voyager/api/graphql?variables=(start:${offset},origin:OTHER,query:(flagshipSearchIntent:SEARCH_SRP,queryParameters:List((key:resultType,value:List(PEOPLE))),includeFiltersInResponse:false))&queryId=voyagerSearchDashClusters.cd5ee9d14d375bf9ca0596cfe0cbb926`
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          accept: "application/vnd.linkedin.normalized+json+2.1",
+          "csrf-token": `ajax:${ajaxNumber}`,
+        },
+      })
+      if (!resp.ok) throw new Error(`Request failed with ${resp.status}`)
+      const json = await resp.json()
+      const included = json.included || []
+
+      return included
+        .filter((x) => x.$type === "com.linkedin.voyager.dash.search.EntityResultViewModel")
+        .map((entity) => {
+          const name = entity?.title?.text || ""
+          const rawUrl = entity?.navigationUrl || ""
+          const profileUrl = rawUrl.split("?")[0].replace(/\/$/, "")
+          const jobTitle = entity?.primarySubtitle?.text || ""
+          const location = entity?.secondarySubtitle?.text || ""
+          const connectionDegree = entity?.badgeText?.text?.replace("• ", "") || ""
+
+          let badgeIcon = null
+          const iconDetail = entity?.badgeIcon?.attributes?.[0]?.detailData || {}
+          if (iconDetail.icon === "IC_LINKEDIN_INFLUENCER_COLOR_ICON_16DP") {
+            badgeIcon = "Influencer"
+          } else if (iconDetail.systemImage === "SYS_ICN_VERIFIED_SMALL") {
+            badgeIcon = "Verified"
+          } else if (iconDetail.icon === "IC_LINKEDIN_PREMIUM_GOLD_ICON_16DP") {
+            badgeIcon = "Premium"
+          }
+
+          let totalFollowers = null
+          const extraLinks = []
+          if (Array.isArray(entity?.insightsResolutionResults)) {
+            entity.insightsResolutionResults.forEach((insight) => {
+              const text = insight?.simpleInsight?.title?.text || ""
+              const match = text.match(/(\d+(\.\d+)?[KMB]?)(?=\s+followers)/i)
+              if (match && !totalFollowers) totalFollowers = match[1]
+              const ctaUrl = insight?.premiumCustomCtaInsight?.navigationContext?.url
+              if (ctaUrl) extraLinks.push(ctaUrl)
+            })
+          }
+
+          return {
+            name,
+            url: profileUrl,
+            jobTitle,
+            location,
+            connectionDegree,
+            badgeIcon,
+            totalFollowers,
+            extraLinks,
+          }
+        })
+    } catch (err) {
+      console.error(err)
+      return []
+    }
+  }
+
+  // Close everything
+  function handleClose() {
+    onClose()
+    stopRef.current = true
+  }
+
+  // Start scraping
+  async function handleStartScraping() {
+    const wanted = parseInt(totalWanted, 10)
+    const start = parseInt(startPage, 10)
+
+    if (isNaN(wanted) || wanted < 1 || wanted > 1000) {
+      alert("Please enter a valid total (1–1000).")
+      handleClose()
+      return
+    }
+    if (isNaN(start) || start < 1) {
+      alert("Please enter a valid start page (≥1).")
+      handleClose()
+      return
+    }
+
+    setModalStep(2) // progress modal
+    setScrapedData([])
+    setFetchedCount(0)
+    setStatusMsg("Scraping in progress...")
+
+    stopRef.current = false
+    let allResults = []
+    let i = 0
+
+    try {
+      while (i < wanted && !stopRef.current) {
+        const offset = (start - 1) * 10 + i
+        const pageData = await fetchLinkedInData(offset)
+        if (!pageData.length) break
+        allResults = allResults.concat(pageData)
+        setScrapedData(allResults)
+        i += pageData.length
+        setFetchedCount(i)
+        await sleep(1000)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+
+    if (!stopRef.current) {
+      setFetchedCount(i)
+      setStatusMsg("Scraping finished! Export or close.")
+      setModalStep(3) // done modal
+    }
+  }
+
+  // Stop and save
+  function handleStopAndSave() {
+    stopRef.current = true
+    if (scrapedData.length) downloadCSV(scrapedData)
+    handleClose()
+  }
+
+  // Final "save CSV" on done modal
+  function handleSaveCSV() {
+    if (scrapedData.length) downloadCSV(scrapedData)
+    handleClose()
+  }
+
+  if (!open) return null
+
+  return (
+    <div >
+      {modalStep === 1 && (
+        <ExportSetupModal
+          totalWanted={totalWanted}
+          setTotalWanted={setTotalWanted}
+          startPage={startPage}
+          setStartPage={setStartPage}
+          onClose={handleClose}
+          onExport={handleStartScraping}
+        />
+      )}
+      {modalStep === 2 && (
+        <ExportProgressModal
+          fetchedCount={fetchedCount}
+          totalWanted={totalWanted}
+          statusMsg={statusMsg}
+          onClose={handleClose}
+          onStopAndSave={handleStopAndSave}
+        />
+      )}
+      {modalStep === 3 && (
+        <ExportDoneModal
+          fetchedCount={fetchedCount}
+          totalWanted={totalWanted}
+          onClose={handleClose}
+          onSave={handleSaveCSV}
+        />
+      )}
+    </div>
+  )
+}
+
+
+
+// src/Popup.jsx
+// my-chrome-extension/src/Popup.jsx
+import React from 'react'
+
+export default function Popup() {
+  return (
+    <div className="relative w-[350px] h-[250px] bg-gray-50 text-gray-800 flex flex-col rounded-md shadow-lg">
+      <header className="flex items-center justify-between px-4 py-3 bg-sky-50 border-b border-sky-200">
+        <div className="flex items-center gap-2">
+          <img
+            src="https://i.ibb.co/vYGgN3t/koldinfologo.png"
+            alt="Koldinfo"
+            className="h-8 w-8"
+          />
+          <h1 className="text-xl font-bold text-sky-400">Koldinfo Scrape</h1>
+        </div>
+        <button className="text-sm font-semibold text-sky-400 hover:text-sky-900">
+          Sign Out
+        </button>
+      </header>
+
+      <main className="flex-1 overflow-y-auto p-4">
+        <h2 className="text-lg font-semibold mb-2">Welcome Karston Fox!</h2>
+        <p>
+          Signed in as <span className="font-medium">karston@koldleads.com</span>.
+        </p>
+        <button
+          onClick={() => window.open('https://www.linkedin.com/search/results/people/', '_blank')}
+          className="mt-4 w-full rounded bg-sky-400 py-2 text-white font-semibold hover:bg-sky-700"
+        >
+          Visit LinkedIn to Start Scraping
+        </button>
+      </main>
+
+      <a
+        href="https://app.koldinfo.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="absolute bottom-2 right-2 text-xs text-sky-400 hover:text-sky-600 font-bold"
+      >
+        Enrich data on koldinfo web
+      </a>
+    </div>
+  )
+}
+
+
+
+// index.html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + React</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+
+
+// manifest.json
+{
+  "manifest_version": 3,
+  "name": "Koldinfo",
+  "version": "1.0.0",
+  "description": "Scrape linkedin like a G",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.linkedin.com/search/results/people/*"],
+      "js": ["src/contentScript.jsx"]
+    }
+  ]
+}
+
+
+
+// package.json
+{
+  "name": "my-chrome-extension",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.0",
+    "@heroicons/react": "^2.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.30",
+    "@eslint/js": "^9.17.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.0.5"
+  }
+}
+
+
+
+// postcss.config.js
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+
+
+// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './index.html',
+    './src/**/*.{js,jsx}'
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+  safelist: process.env.NODE_ENV === 'development' ? [{ pattern: /./ }] : [],
+
+}
+
+
+// vite.config.js
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import { crx } from '@crxjs/vite-plugin'
+import manifest from './manifest.json'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    crx({ manifest }),
+  ],
+})
+

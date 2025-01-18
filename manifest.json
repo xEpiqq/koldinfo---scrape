@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Koldinfo",
+  "version": "1.0.0",
+  "description": "Scrape linkedin like a G",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.linkedin.com/search/results/people/*"],
+      "js": ["src/contentScript.jsx"]
+    }
+  ]
+}
